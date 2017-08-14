@@ -1,0 +1,194 @@
+Only in ./: Afa-strategies.patch
+Only in ./: newVersion
+diff -u ./satisfaction-based-interest-acceptance.h newVersion/satisfaction-based-interest-acceptance.h
+--- ./satisfaction-based-interest-acceptance.h	2016-03-15 09:12:25.463590323 +0100
++++ newVersion/satisfaction-based-interest-acceptance.h	2017-08-14 20:05:58.580147226 +0200
+@@ -28,7 +28,7 @@
+ #include "ns3/ndn-interest.h"
+ #include "ns3/ndn-data.h"
+ 
+-#include "stats.h"
++#include "ns3/ndnSIM/utils/stats.h"
+ 
+ namespace ns3 {
+ namespace ndn {
+diff -u ./satisfaction-based-pushback.cc newVersion/satisfaction-based-pushback.cc
+--- ./satisfaction-based-pushback.cc	2016-03-15 09:12:25.463590323 +0100
++++ newVersion/satisfaction-based-pushback.cc	2017-08-14 20:05:58.580147226 +0200
+@@ -31,6 +31,7 @@
+ #include "ns3/simulator.h"
+ #include "ns3/random-variable.h"
+ #include "ns3/double.h"
++#include "ns3/string.h"
+ 
+ #include <boost/foreach.hpp>
+ #include <boost/lexical_cast.hpp>
+@@ -52,8 +53,8 @@
+   static TypeId tid = TypeId ((super::GetTypeId ().GetName ()+"::SatisfactionBasedPushback").c_str ())
+     .SetGroupName ("Ndn")
+     .template SetParent <super> ()
+-    .template AddConstructor <SatisfactionBasedPushback> ()
+-
++    .template AddConstructor <SatisfactionBasedPushback<Parent>> ()
++    .template AddTraceSource ("PITUsage",  "PITUsage",  MakeTraceSourceAccessor (&SatisfactionBasedPushback<Parent>::pitUsageTrace))
+     .template AddAttribute ("GraceThreshold", "Fraction of resources that we are willing to sacrifice for \"bad traffic\"",
+                             DoubleValue (0.05),
+                             MakeDoubleAccessor (&SatisfactionBasedPushback::m_graceThreshold),
+@@ -66,6 +67,20 @@
+   return tid;
+ }
+ 
++// Inserting a constructor since I do not see any better place to read the PIT maxSize value
++template<class Parent>
++SatisfactionBasedPushback<Parent>::SatisfactionBasedPushback ()
++{  
++  m_announceEventScheduled = false;
++  firstTime = true;
++  // I moved to the OnInterest method since in this position it was not working, cause the ndn stack helper was
++  // initializing first the strategy and so was crashing when this value was asked and not available yet
++  //StringValue svPitSize;
++  //this->m_pit->GetAttribute("MaxSize", svPitSize);
++  //pitMaxSize = atoi(svPitSize.Get().c_str());
++}
++
++
+ template<class Parent>
+ void
+ SatisfactionBasedPushback<Parent>::DoDispose ()
+@@ -117,12 +132,27 @@
+ SatisfactionBasedPushback<Parent>::OnInterest (Ptr<Face> face,
+                                                Ptr<Interest> interest)
+ {
+-  if (interest->GetScope () != 0)
++  if (interest->GetScope () != 0){
+     super::OnInterest (face, interest);
++    pitUsageTrace(getPitUsage(), this->m_pit->GetSize());
++  }
+   else
+     ApplyAnnouncedLimit (face, interest);
+ }
+ 
++template<class Parent>
++double
++SatisfactionBasedPushback<Parent>::getPitUsage()
++{
++  if (firstTime){
++    StringValue svPitSize;
++    this->m_pit->GetAttribute("MaxSize", svPitSize);
++    pitMaxSize = atoi(svPitSize.Get().c_str());
++    firstTime = false;
++  }
++  // If the PIT size is not restricted return -1
++  return pitMaxSize == 0 ? -1 : (double)this->m_pit->GetSize() / (double)pitMaxSize;
++}
+ 
+ template<class Parent>
+ void
+Only in ./: .satisfaction-based-pushback.cc.swp
+diff -u ./satisfaction-based-pushback.h newVersion/satisfaction-based-pushback.h
+--- ./satisfaction-based-pushback.h	2016-03-15 09:12:25.463590323 +0100
++++ newVersion/satisfaction-based-pushback.h	2017-08-14 20:05:58.580147226 +0200
+@@ -24,7 +24,7 @@
+ 
+ #include <ns3/event-id.h>
+ 
+-#include "stats.h"
++#include "ns3/ndnSIM/utils/stats.h"
+ 
+ namespace ns3 {
+ namespace ndn {
+@@ -48,13 +48,16 @@
+   /**
+    * @brief Default constructor
+    */
+-  SatisfactionBasedPushback ()
+-    : m_announceEventScheduled (false)
+-  {
+-  }
++  SatisfactionBasedPushback ();
++  //  : m_announceEventScheduled (false)
++  //{
++  //}
+ 
+   static std::string
+   GetLogName ();
++
++
++  double getPitUsage();
+   
+   virtual void
+   OnInterest (Ptr<Face> face,
+@@ -79,13 +82,18 @@
+   virtual void
+   DoDispose ();
+     
++
++  TracedCallback<double, uint32_t> pitUsageTrace;
+ private:
+   static LogComponent g_log;
+   
+   bool m_announceEventScheduled;
++  bool firstTime;
+ 
+   double m_graceThreshold;
+ 
++  int pitMaxSize;
++
+   TracedCallback< Ptr<const Face>, double /* ratio */, double/* adjusted weight */, double /* limit */ > m_onLimitsAnnounce;
+ };
+ 
+Only in ./: .satisfaction-based-pushback.h.swp
+diff -u ./token-bucket-with-per-interface-fairness.cc newVersion/token-bucket-with-per-interface-fairness.cc
+--- ./token-bucket-with-per-interface-fairness.cc	2016-03-15 09:12:25.463590323 +0100
++++ newVersion/token-bucket-with-per-interface-fairness.cc	2017-08-14 20:05:58.580147226 +0200
+@@ -157,7 +157,7 @@
+   // pitEntry->OffsetLifetime (Seconds (0.010) + );
+   // std::cerr << (pitEntry->GetExpireTime () - Simulator::Now ()).ToDouble (Time::S) * 1000 << "ms" << std::endl;
+   pitEntry->OffsetLifetime (Seconds (-pitEntry->GetInterest ()->GetInterestLifetime ().ToDouble (Time::S)));
+-  pitEntry->UpdateLifetime (Seconds (0.10));
++  //pitEntry->UpdateLifetime (Seconds (0.10));
+ 
+   bool enqueued = m_pitQueues[outFace].Enqueue (inFace, pitEntry, 1.0);
+ 
+@@ -253,6 +253,18 @@
+     }
+ }
+ 
++template<class Parent>
++void
++TokenBucketWithPerInterfaceFairness<Parent>::DidSendOutInterest (Ptr<Face> inFace,
++                                   Ptr<Face> outFace,
++                                   Ptr<const Interest> interest,
++                                   Ptr<pit::Entry> pitEntry)
++{
++  NS_LOG_FUNCTION (inFace);
++  super::DidSendOutInterest (inFace, outFace, interest, pitEntry);
++
++}
++
+ } // namespace fw
+ } // namespace ndn
+ } // namespace ns3
+@@ -260,7 +272,7 @@
+ 
+ #include <ns3/ndnSIM/model/fw/best-route.h>
+ #include "satisfaction-based-pushback.h"
+-#include "stats.h"
++#include "ns3/ndnSIM/utils/stats.h"
+ 
+ namespace ns3 {
+ namespace ndn {
+Only in ./: .token-bucket-with-per-interface-fairness.cc.swp
+diff -u ./token-bucket-with-per-interface-fairness.h newVersion/token-bucket-with-per-interface-fairness.h
+--- ./token-bucket-with-per-interface-fairness.h	2016-03-15 09:12:25.463590323 +0100
++++ newVersion/token-bucket-with-per-interface-fairness.h	2017-08-14 20:05:58.580147226 +0200
+@@ -23,7 +23,7 @@
+ #define TOKEN_BUCKET_WITH_PER_INTERFACE_FAIRNESS_H
+ 
+ #include <ns3/event-id.h>
+-#include "utils/ndn-pit-queue.h"
++#include "ns3/ndnSIM/utils/ndn-pit-queue.h"
+ 
+ #include <ns3/ndn-forwarding-strategy.h>
+ 
+Only in ./: .token-bucket-with-per-interface-fairness.h.swp
