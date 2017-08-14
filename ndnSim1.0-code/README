@@ -1,0 +1,6 @@
+The different folders contain additional modules and applications to be included and compiled with ndnSim. Those source files are to meant to be deployed in specific ndnSim subfolders, but they also have to be located by the waf tool otherwise the simulator cannot be compiled and the simulations not run.
+For example, I have included all of them in the folder $NDN_SIM_MAIN_DIR/src/ndnSIM/apps/ and then I've added an element to the headers.source[] in $NDN_SIM_MAIN_DIR/src/ndnSIM/wscript to compile and make the new code visible to the simulation scripts.
+
+The folder "simulationScripts" contains code describing simulation scenarios. Right now it contains the ndn-wiki-simple.cc scenario that I've written to simulate a simple three-node scenario with one consumer and one producer linked by a single router in-between in which the nodes use the wiki-client and wiki-producer classes. To run the simulation and see some log information use the following cmd:
+
+NS_LOG=ndn.WikiClient:ndn.WikiProducer ./waf --run="ndn-wiki-simple wikiSmallSample.txt"
