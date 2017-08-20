@@ -4,3 +4,46 @@ For example, I have included all of them in the folder $NDN_SIM_MAIN_DIR/src/ndn
 The folder "simulationScripts" contains code describing simulation scenarios. Right now it contains the ndn-wiki-simple.cc scenario that I've written to simulate a simple three-node scenario with one consumer and one producer linked by a single router in-between in which the nodes use the wiki-client and wiki-producer classes. To run the simulation and see some log information use the following cmd:
 
 NS_LOG=ndn.WikiClient:ndn.WikiProducer ./waf --run="ndn-wiki-simple wikiSmallSample.txt"
+
+Strategies
+--------------------------------
+CNMR (whose code was provided to us, but which is not publicly available): it refers to the defense mechanisms described in the paper "H. Salah, J. Wulfheide, and T. Strufe: Coordination Supports Security: A New Defence Mechanism Against Interest Flooding in NDN, in IEEE LCN 2015, Clearwater - Florida, USA".
+
+Satisfaction-Based Pushback (SBP): the code available at https://github.com/cawka/ndnSIM-ddos-interest-flooding has been used. The strategies provided thereby have been modified to leverage a PITUsage tracer implemented by the CNMR's authors and the InterestType tracer implemented by us. The modification have been reported in this repo as patches.
+
+Distributed Poseidon (DP): an implementation of the distributed poseidon technique presented in "Compagno, Alberto, et al. "Poseidon: Mitigating interest flooding DDoS attacks in named data networking." Local Computer Networks (LCN), 2013 IEEE 38th Conference on. IEEE, 2013" has been provided with this code-base.
+
+Further details about the strategies may be found in the ./ndnSim1.0-code/strategies/README.
+
+
+Interest Type Tracer
+---------------------------------
+To understand how much defense strategies affect legitimate traffic under an IFA, we have implemented a custom tracer which reads a specific packet tag carrying information about the Interest Type. The InterestType Tag, which is defined in "ns3/ndnSIM/utils/interest-type-tag.h", is an integer tag that so far may take two different values '0' for Fake Interests, '1' for Legitimate Interests. The tag is set accordingly and added to the packet by the consumers and attackers applications.
+The tracer records statistics about legitimate and fake interests at each router over an observation time window. The statistics include number of received Interests, of forwarded ones and of dropped ones. The tracer prints the information in the following format
+
+Time    Node    Type    Signal  Value
+10      56      0       Received        0
+10      56      0       Forwarded       0
+10      56      0       Dropped 0
+10      56      1       Received        908
+10      56      1       Forwarded       908
+10      56      1       Dropped 0
+
+as it can be seen, statistics about both Interest types are reported by the node anytime this is scheduled.
+
+All the strategies tested have been modified to include the Interest Type Tracer. The statistics are recorded at almost (e.g., duplicates Interests are not recorded) each Interest Reception. The correct way of doing this follows:
+
+- for forwarded Interests:
+    interestTypesTrace(interestType, 1);
+
+- for dropped Interests:
+    interestTypesTrace(interestType, 0);
+
+- to register only the Interest reception you may specify any value bigger than 1 as second parameter
+    interestTypesTrace(interestType, 2);
+
+If you wonder why, you may get an answer by looking at the following tracer's method:
+
+void InterestTracer::InterestTypes (uint32_t type, uint32_t reportType)
+
+How has the correctness of this tracer been tested? This depends on where the call to the tracer are placed in the strategy code and, of course, it changes according to the strategy logic. So, the answer is that there is no uniform test unit provided with this tracer.
