@@ -16,6 +16,8 @@
  *
  * Author: Salvatore Signorello  <salvatore.signorello@uni.lu>
  * Some code neither licensed nor public was provided by:
+ *  Hani Salah <hsalah@ke.tu-darm­stadt.de>  
+ *  Julian Wulfheide <ju.wulfheide@gmail.com>
  */
 
 #include "ndn-consumer.h"
@@ -65,11 +67,11 @@ TypeId CnmrWikiSmartAttacker::GetTypeId (void)
                 MakeStringChecker ())
 
 	.AddAttribute ("switchTarget",
-		"This value represents the percentage of existent contents requested each second",
+		"This flag activates the switch of target prefix name after every observation period",
                 BooleanValue(true),
                 MakeBooleanAccessor (&CnmrWikiSmartAttacker::m_switchT),
                 MakeBooleanChecker ())
-	.AddAttribute("ObservationPeriod", "Interval at which a monitor reports to the CC",
+	.AddAttribute("ObservationPeriod", "Interval at which the attacker changes target prefix name",
                 TimeValue (Seconds (10)),
                 MakeTimeAccessor (&CnmrWikiSmartAttacker::m_observationPeriod),
                 MakeTimeChecker ());

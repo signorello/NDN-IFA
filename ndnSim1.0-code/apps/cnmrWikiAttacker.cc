@@ -16,7 +16,7 @@
  *
  * Author: Salvatore Signorello  <salvatore.signorello@uni.lu>
  * Some code neither licensed nor public was provided by:
- *  Hani Salah <hsalah@ke.tu-darm­stadt.de>  
+ *  Hani Salah <hsalah@ke.tu-darmstadt.de>  
  *  Julian Wulfheide <ju.wulfheide@gmail.com>
  */
 

@@ -1,9 +1,38 @@
 The different folders contain additional modules and applications to be included and compiled with ndnSim. Those source files are to meant to be deployed in specific ndnSim subfolders, but they also have to be located by the waf tool otherwise the simulator cannot be compiled and the simulations not run.
 For example, I have included all of them in the folder $NDN_SIM_MAIN_DIR/src/ndnSIM/apps/ and then I've added an element to the headers.source[] in $NDN_SIM_MAIN_DIR/src/ndnSIM/wscript to compile and make the new code visible to the simulation scripts.
 
+
+
+Apps
+--------------------------------
+*** BASIC versions ***
+
+All the producer and consumer applications require an instance of the class WikiPageTitles to exist in order to generate Interests or respond with Data. WikiPageTitles is a Singleton which loads content names from a text files and makes them available through its methods to the applications in the simulation.
+
+wiki-client.cc: client application which mimics the behavior of  ConsumerCbr but uses content names provided by the WikiPageTitles object as content identifiers to append to Interests prefix name
+
+wiki-producer.cc: A simple Interest-sink application which replies every incoming Interest with Data packet with a specified size and name same as in Interest as soon as the Interest name exists in the list held by the Singleton class WikiPageTitles.
+
+*** CNMR versions ***
+
+All the applications including the prefix cnmr in their names have inherited some code from analogous applications used for the evaluation in the original CNMR work (see Section strategies below), but those have been modified to work with names read provided by a WikiPageTitles object.
+
+cnmrWiki-producer.cc & wikiCnmr-client.cc: simple producer and consumer
+
+cnmrWikiAttacker.cc: the attacker code is not dependent on the cnmr code, however the class has been named with the prefix too in order to keep track that it replicates the behavior of the attackers in CNMR simulations. The class has however be enhanced to achieve two additional things. First, attackers can load a list of fake names from a txt file. Second, attackers may decide the percentage of legitimate and fake interests to generate during an attack through the class' attribute 'purity'.
+
+cnmrWikiSmartAttacker.cc: this class inherits from the cnmrWikiAttacker and includes the ability to switch target prefix name during an attack. This is made possible thanks to three additional attributes. The attribute Prefixes stores a list of prefix names. The attribute switchTarget activates the behavior. The attribute ObservationPeriod specifies at which periodic interval the attacker has to switch among the prefixes.
+
+Config_files
+--------------------------------
+Content to be uploaded soon.
+
+Simulation Scripts
+--------------------------------
 The folder "simulationScripts" contains code describing simulation scenarios. Right now it contains the ndn-wiki-simple.cc scenario that I've written to simulate a simple three-node scenario with one consumer and one producer linked by a single router in-between in which the nodes use the wiki-client and wiki-producer classes. To run the simulation and see some log information use the following cmd:
 
 NS_LOG=ndn.WikiClient:ndn.WikiProducer ./waf --run="ndn-wiki-simple wikiSmallSample.txt"
+
 
 Strategies
 --------------------------------
@@ -16,8 +45,15 @@ Distributed Poseidon (DP): an implementation of the distributed poseidon techniq
 Further details about the strategies may be found in the ./ndnSim1.0-code/strategies/README.
 
 
-Interest Type Tracer
+Utils
 ---------------------------------
+
+*** WikiPageTitles ***
+This class loads a list of names in an unordered map. The txt file is expected to have one string per line containing no spaces. The class was named WikiPageTitles because the text file loaded for the experiments came from a dump of wikipedia english page titles.
+
+
+*** Interest Type Tracer ***
+
 To understand how much defense strategies affect legitimate traffic under an IFA, we have implemented a custom tracer which reads a specific packet tag carrying information about the Interest Type. The InterestType Tag, which is defined in "ns3/ndnSIM/utils/interest-type-tag.h", is an integer tag that so far may take two different values '0' for Fake Interests, '1' for Legitimate Interests. The tag is set accordingly and added to the packet by the consumers and attackers applications.
 The tracer records statistics about legitimate and fake interests at each router over an observation time window. The statistics include number of received Interests, of forwarded ones and of dropped ones. The tracer prints the information in the following format
 
@@ -46,4 +82,4 @@ If you wonder why, you may get an answer by looking at the following tracer's me
 
 void InterestTracer::InterestTypes (uint32_t type, uint32_t reportType)
 
-How has the correctness of this tracer been tested? This depends on where the call to the tracer are placed in the strategy code and, of course, it changes according to the strategy logic. So, the answer is that there is no uniform test unit provided with this tracer.
+How has the correctness of this tracer been tested? This depends on where the call to the tracer are placed in the strategy code and, of course, it changes according to the strategy logic. So, the short answer is that there is no uniform test unit provided with this tracer.
