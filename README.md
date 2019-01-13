@@ -8,7 +8,7 @@ NAMES
 This repository contains custom ndnSim applications reading content identifiers from text files. This was meant to have realistic names in simulations as part of a steadier attack model for IFAs. A publicly available list of Wikipedia page titles has been leveraged to simulate a large number of different content identifiers. Up-to-date lists of the wikipedia page titles are made available by the Wikimedia foundation. Experiments in [1] used the list of page titles for the English version of the Wikipedia encyclopedia dated 2016-03-28. The original archive has not been included in this repository because of its large size. Follows some information about that archive:
 
 archive name: enwiki-20160328-all-titles-in-ns-0.gz
-Available at: https://dumps.wikimedia.org/other/pagetitles/20160328/enwiki-20160328-all-titles-in-ns-0.gz
+Once available at: https://dumps.wikimedia.org/other/pagetitles/20160328/enwiki-20160328-all-titles-in-ns-0.gz (this link is not valid anymore, the wikimedia foundation may have way and format to disseminate this kind of files)
 md5sum: 079e8d33138109bfee633544820dd711
 
 That list contains 124127128 different page titles.
