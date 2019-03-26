@@ -1,0 +1,53 @@
+Distributed Poseidon Forwarding Strategy
+-----------------------------------------------
+Statistics and parameters (as much as possible equivalent to the definitions reported in the original paper):
+
+
+Rij identifies the j-th interface on router Ri
+
+- tk: k-th time interval 
+
+- omega(Rij,tk): num of Interests from Rij at interval tk/num of contents to Rij at interval tk
+
+- pit_usage(Rij, tk): PIT space (num of bytes in the original paper, while num of entries in this implementation) used by Interests arrived on interface Rij and measured at the end of tk
+
+- omega_thd: detection threshold for omega(Rij,tk) [class Attribute &Poseidon::m_omega]
+
+- pit_usage_thd: detection threshold for pit_usage(Rij, tk) [class Attribute &Poseidon::m_rho]
+
+- scale_factor: factor used to lower omega and rho thresholds upon the reception of an alarm [class Attribute &Poseidon::m_scale]
+
+- time_interval: time interval over which statistics are collected, every time_interval faces statistics are cleaned [class Attribute &Poseidon::m_timeInterval]
+
+- wait_time: minimum inter-gap between two alerts at the same interface [class Attribute &Poseidon::m_waitTime]
+
+- namespace for pushing notifications downstream [class Attribute &Poseidon::CreateAlertsName]
+
+
+Summary of the main behaviors implemented by this forwarding strategy:
+
+			ConditionA: if( omega(Rij,tk) > omega_thd AND pit_usage (Rij, tk) > pit_usage_thd)
+
+			ConditionB: if(time_last(rij) > wait_time)
+
+- at Interest Reception:
+	Load Statistics (omega and pit_usage) for the face
+	if ConditionA, then:
+	  if ConditionB, then:
+		Generate Pushback Alarm
+	  else
+		drop Interest // side-note: I am not sure this behavior is fully correct/intended
+	else
+		forward according to the parent forwarding strategy method, yet override DidSendOutInterest to record statistics
+
+- at Data Reception:
+	if the Data is push-back alarm, then
+		if no other alert has been received for this face within a m_waitTime interval, then
+		thresholds for both omega and pit are scaled down according to the received scaling factor*	
+	else
+		Data is forwarded normally
+
+
+- Generate Pushback Alarm: called by the onInterest method when both conditionA and conditionB are met, it pushes out a Data packet, whose name is the string stored in the CreateAlertsName class variable.
+
+* Indeed, a static scale factor, stored in &Poseidon::m_scale, is used by the nodes. The scale factor could be easily carried as payload in the related Push-Back notification (TBD).
